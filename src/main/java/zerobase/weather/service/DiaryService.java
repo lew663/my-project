@@ -1,10 +1,15 @@
 package zerobase.weather.service;
 
+import lombok.RequiredArgsConstructor;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import zerobase.weather.domain.Diary;
+import zerobase.weather.dto.CreateDiaryRequestDto;
+import zerobase.weather.repository.DiaryRepository;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -15,17 +20,29 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class DiaryService {
 
   @Value("${openweathermap.key}")
   private String apiKey;
 
-  public void createDiary(LocalDate date, String text) {
+  private final DiaryRepository diaryRepository;
+
+  public void createDiary(CreateDiaryRequestDto requestDto) {
+
     // 데이터 받아오기
     String weatherData = getWeatherString();
     // 데이터 파싱하기
     Map<String, Object> parsedWeather = parseWeather(weatherData);
     // 파싱된 데이터 + 일기 값 db에 저장
+    Diary diary = new Diary(
+        (String) parsedWeather.get("main"),
+        (String) parsedWeather.get("icon"),
+        (Double) parsedWeather.get("temp"),
+        requestDto.getText(),
+        requestDto.getDate()
+    );
+    diaryRepository.save(diary);
   }
 
   /**
@@ -74,9 +91,13 @@ public class DiaryService {
 
     JSONObject mainData = (JSONObject) jsonObject.get("main");
     resultMap.put("temp", mainData.get("temp"));
-    JSONObject weatherData = (JSONObject) jsonObject.get("weather");
-    resultMap.put("main", weatherData.get("main"));
-    resultMap.put("icon", weatherData.get("icon"));
+
+    JSONArray weatherArray = (JSONArray) jsonObject.get("weather");
+    if (weatherArray != null && !weatherArray.isEmpty()) {
+      JSONObject weatherData = (JSONObject) weatherArray.get(0);
+      resultMap.put("main", weatherData.get("main"));
+      resultMap.put("icon", weatherData.get("icon"));
+    }
 
     return resultMap;
   }

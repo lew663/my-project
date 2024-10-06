@@ -27,4 +27,12 @@ public class Diary {
   private String text;
 
   private LocalDate date;
+
+  public Diary(String weather, String icon, double temperature, String text, LocalDate date) {
+    this.weather = weather;
+    this.icon = icon;
+    this.temperature = temperature;
+    this.text = text;
+    this.date = date;
+  }
 }
