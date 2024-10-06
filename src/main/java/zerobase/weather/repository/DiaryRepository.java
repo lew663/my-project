@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import zerobase.weather.domain.Diary;
 
 @Repository
-public interface DiaryRepository extends JpaRepository<Diary, Integer> {
+public interface DiaryRepository extends JpaRepository<Diary, Long> {
 }
