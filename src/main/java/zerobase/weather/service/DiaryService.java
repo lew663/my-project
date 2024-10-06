@@ -15,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,18 +29,32 @@ public class DiaryService {
 
   public void createDiary(CreateDiaryRequestDto requestDto) {
 
-    // 데이터 받아오기
+    // 날씨 데이터 가져오기
+    Map<String, Object> weatherData = fetchAndParseWeatherData();
+
+    // 일기 객체 생성
+    Diary diary = buildDiaryFromData(weatherData, requestDto);
+
+    // 일기 저장
+    saveDiary(diary);
+  }
+
+  private Map<String, Object> fetchAndParseWeatherData() {
     String weatherData = getWeatherString();
-    // 데이터 파싱하기
-    Map<String, Object> parsedWeather = parseWeather(weatherData);
-    // 파싱된 데이터 + 일기 값 db에 저장
-    Diary diary = new Diary(
-        (String) parsedWeather.get("main"),
-        (String) parsedWeather.get("icon"),
-        (Double) parsedWeather.get("temp"),
+    return parseWeather(weatherData);
+  }
+
+  private Diary buildDiaryFromData(Map<String, Object> weatherData, CreateDiaryRequestDto requestDto) {
+    return new Diary(
+        (String) weatherData.get("main"),
+        (String) weatherData.get("icon"),
+        (Double) weatherData.get("temp"),
         requestDto.getText(),
         requestDto.getDate()
     );
+  }
+
+  private void saveDiary(Diary diary) {
     diaryRepository.save(diary);
   }
 
