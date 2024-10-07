@@ -26,7 +26,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
- 
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -40,49 +40,64 @@ public class DiaryService {
 
   @Transactional
   public void createDiary(CreateDiaryRequestDto requestDto) {
+    log.info("Started to create diary for date: {}", requestDto.getDate());
     DateWeather dateWeather = getDateWeatherForDate(requestDto.getDate());
     Diary diary = buildDiaryFromData(dateWeather, requestDto);
     saveDiary(diary);
+    log.info("Diary created successfully for date: {}", requestDto.getDate());
   }
 
   @Transactional
   public DateWeather getDateWeatherForDate(LocalDate date) {
+    log.debug("Fetching DateWeather for date: {}", date);
     List<DateWeather> data = dateWeatherRepository.findAllByDate(date);
+
     if (!data.isEmpty()) {
+      log.debug("Found existing weather data for date: {}", date);
       return data.get(0);
     }
+    log.debug("No weather data found for date: {}, fetching from API", date);
     return fetchAndSaveWeatherData();
   }
 
   @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
   public List<Diary> readDiary(LocalDate date) {
+    log.debug("Reading diary for date: {}", date);
     return diaryRepository.findAllByDate(date);
   }
 
   @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
   public List<Diary> readDiaries(ReadDiariesRequestDto requestDto) {
+    log.debug("Reading diaries between {} and {}", requestDto.getStartDate(), requestDto.getEndDate());
     return diaryRepository.findAllByDateBetween(requestDto.getStartDate(), requestDto.getEndDate());
   }
 
   @Transactional
   public void updateDiary(CreateDiaryRequestDto requestDto) {
+    log.info("Updating diary for date: {}", requestDto.getDate());
     Diary diary = diaryRepository.getFirstByDate(requestDto.getDate());
     diary.updateDiary(requestDto.getDate(), requestDto.getText());
+    log.info("Diary updated successfully for date: {}", requestDto.getDate());
   }
 
   @Transactional
   public void deleteDiary(LocalDate date) {
+    log.info("Deleting all diaries for date: {}", date);
     diaryRepository.deleteAllByDate(date);
+    log.info("All diaries deleted for date: {}", date);
   }
 
   @Transactional
   @Scheduled(cron = "0 0 1 * * *")
   public void saveWeatherData() {
+    log.info("Scheduled task to save weather data started");
     fetchAndSaveWeatherData();
+    log.info("Scheduled task to save weather data finished");
   }
 
   @Transactional
   private DateWeather fetchAndSaveWeatherData() {
+    log.debug("Fetching and saving weather data from API");
     Map<String, Object> weatherData = fetchAndParseWeatherData();
     DateWeather dateWeather = buildDateWeatherFromData(weatherData);
     return dateWeatherRepository.save(dateWeather);
@@ -116,11 +131,7 @@ public class DiaryService {
     diaryRepository.save(diary);
   }
 
-  /**
-   * openweathermap 에서 날씨 데이터 가져오기
-   */
   private String getWeatherString() {
-
     String apiUrl = "https://api.openweathermap.org/data/2.5/weather?q=seoul&appid=" + apiKey;
     try {
       URL url = new URL(apiUrl);
@@ -141,14 +152,11 @@ public class DiaryService {
       br.close();
       return response.toString();
     } catch (Exception e) {
+      log.error("Failed to get weather data from API", e);
       return "failed to get response";
     }
-
   }
 
-  /**
-   * json 데이터 파싱하기
-   */
   private Map<String, Object> parseWeather(String jsonString) {
     JSONParser jsonParser = new JSONParser();
     JSONObject jsonObject;
@@ -156,10 +164,11 @@ public class DiaryService {
     try {
       jsonObject = (JSONObject) jsonParser.parse(jsonString);
     } catch (ParseException e) {
+      log.error("Failed to parse weather data", e);
       throw new RuntimeException(e);
     }
-    Map<String, Object> resultMap = new HashMap<>();
 
+    Map<String, Object> resultMap = new HashMap<>();
     JSONObject mainData = (JSONObject) jsonObject.get("main");
     resultMap.put("temp", mainData.get("temp"));
 
@@ -172,5 +181,4 @@ public class DiaryService {
 
     return resultMap;
   }
-
 }

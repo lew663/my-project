@@ -41,3 +41,4 @@ out/
 settings.gradle
 
 .env
+logs
