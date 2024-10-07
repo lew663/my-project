@@ -35,4 +35,9 @@ public class Diary {
     this.text = text;
     this.date = date;
   }
+
+  public void updateDiary(LocalDate date, String text) {
+    this.date = date;
+    this.text = text;
+  }
 }

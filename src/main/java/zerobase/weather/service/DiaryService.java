@@ -1,5 +1,6 @@
 package zerobase.weather.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -9,13 +10,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import zerobase.weather.domain.Diary;
 import zerobase.weather.dto.CreateDiaryRequestDto;
+import zerobase.weather.dto.ReadDiariesRequestDto;
 import zerobase.weather.repository.DiaryRepository;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -28,15 +32,28 @@ public class DiaryService {
   private final DiaryRepository diaryRepository;
 
   public void createDiary(CreateDiaryRequestDto requestDto) {
-
-    // 날씨 데이터 가져오기
     Map<String, Object> weatherData = fetchAndParseWeatherData();
-
-    // 일기 객체 생성
     Diary diary = buildDiaryFromData(weatherData, requestDto);
-
-    // 일기 저장
     saveDiary(diary);
+  }
+
+  public List<Diary> readDiary(LocalDate date) {
+    return diaryRepository.findAllByDate(date);
+  }
+
+  public List<Diary> readDiaries(ReadDiariesRequestDto requestDto) {
+    return diaryRepository.findAllByDateBetween(requestDto.getStartDate(), requestDto.getEndDate());
+  }
+
+  @Transactional
+  public void updateDiary(CreateDiaryRequestDto requestDto) {
+    Diary diary = diaryRepository.getFirstByDate(requestDto.getDate());
+    diary.updateDiary(requestDto.getDate(), requestDto.getText());
+  }
+
+  @Transactional
+  public void deleteDiary(LocalDate date) {
+    diaryRepository.deleteAllByDate(date);
   }
 
   private Map<String, Object> fetchAndParseWeatherData() {
@@ -114,4 +131,7 @@ public class DiaryService {
 
     return resultMap;
   }
+
+
+
 }
