@@ -1,16 +1,21 @@
 package zerobase.weather.service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import zerobase.weather.domain.DateWeather;
 import zerobase.weather.domain.Diary;
 import zerobase.weather.dto.CreateDiaryRequestDto;
 import zerobase.weather.dto.ReadDiariesRequestDto;
+import zerobase.weather.repository.DateWeatherRepository;
 import zerobase.weather.repository.DiaryRepository;
 
 import java.io.BufferedReader;
@@ -21,38 +26,66 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+ 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Slf4j
 public class DiaryService {
 
   @Value("${openweathermap.key}")
   private String apiKey;
 
   private final DiaryRepository diaryRepository;
+  private final DateWeatherRepository dateWeatherRepository;
 
+  @Transactional
   public void createDiary(CreateDiaryRequestDto requestDto) {
-    Map<String, Object> weatherData = fetchAndParseWeatherData();
-    Diary diary = buildDiaryFromData(weatherData, requestDto);
+    DateWeather dateWeather = getDateWeatherForDate(requestDto.getDate());
+    Diary diary = buildDiaryFromData(dateWeather, requestDto);
     saveDiary(diary);
   }
 
+  @Transactional
+  public DateWeather getDateWeatherForDate(LocalDate date) {
+    List<DateWeather> data = dateWeatherRepository.findAllByDate(date);
+    if (!data.isEmpty()) {
+      return data.get(0);
+    }
+    return fetchAndSaveWeatherData();
+  }
+
+  @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
   public List<Diary> readDiary(LocalDate date) {
     return diaryRepository.findAllByDate(date);
   }
 
+  @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
   public List<Diary> readDiaries(ReadDiariesRequestDto requestDto) {
     return diaryRepository.findAllByDateBetween(requestDto.getStartDate(), requestDto.getEndDate());
   }
 
+  @Transactional
   public void updateDiary(CreateDiaryRequestDto requestDto) {
     Diary diary = diaryRepository.getFirstByDate(requestDto.getDate());
     diary.updateDiary(requestDto.getDate(), requestDto.getText());
   }
 
+  @Transactional
   public void deleteDiary(LocalDate date) {
     diaryRepository.deleteAllByDate(date);
+  }
+
+  @Transactional
+  @Scheduled(cron = "0 0 1 * * *")
+  public void saveWeatherData() {
+    fetchAndSaveWeatherData();
+  }
+
+  @Transactional
+  private DateWeather fetchAndSaveWeatherData() {
+    Map<String, Object> weatherData = fetchAndParseWeatherData();
+    DateWeather dateWeather = buildDateWeatherFromData(weatherData);
+    return dateWeatherRepository.save(dateWeather);
   }
 
   private Map<String, Object> fetchAndParseWeatherData() {
@@ -60,13 +93,22 @@ public class DiaryService {
     return parseWeather(weatherData);
   }
 
-  private Diary buildDiaryFromData(Map<String, Object> weatherData, CreateDiaryRequestDto requestDto) {
+  private Diary buildDiaryFromData(DateWeather dateWeather, CreateDiaryRequestDto requestDto) {
     return new Diary(
-        (String) weatherData.get("main"),
-        (String) weatherData.get("icon"),
-        (Double) weatherData.get("temp"),
+        dateWeather.getWeather(),
+        dateWeather.getIcon(),
+        dateWeather.getTemperature(),
         requestDto.getText(),
         requestDto.getDate()
+    );
+  }
+
+  private DateWeather buildDateWeatherFromData(Map<String, Object> weatherData) {
+    return new DateWeather(
+        LocalDate.now(),
+        (String) weatherData.get("main"),
+        (String) weatherData.get("icon"),
+        (Double) weatherData.get("temp")
     );
   }
 
@@ -130,7 +172,5 @@ public class DiaryService {
 
     return resultMap;
   }
-
-
 
 }
