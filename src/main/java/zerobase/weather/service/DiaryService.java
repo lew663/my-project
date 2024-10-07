@@ -24,6 +24,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class DiaryService {
 
   @Value("${openweathermap.key}")
@@ -45,13 +46,11 @@ public class DiaryService {
     return diaryRepository.findAllByDateBetween(requestDto.getStartDate(), requestDto.getEndDate());
   }
 
-  @Transactional
   public void updateDiary(CreateDiaryRequestDto requestDto) {
     Diary diary = diaryRepository.getFirstByDate(requestDto.getDate());
     diary.updateDiary(requestDto.getDate(), requestDto.getText());
   }
 
-  @Transactional
   public void deleteDiary(LocalDate date) {
     diaryRepository.deleteAllByDate(date);
   }

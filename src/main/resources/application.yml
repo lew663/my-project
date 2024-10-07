@@ -1,14 +1,10 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-    platform: h2
-
-  h2:
-    console:
-      enabled: true
+    url: ${DATABASE_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DATABASE_NAME}
+    password: ${DATABASE_PASSWORD}
+    platform: mysql
 
   jpa:
     hibernate:
@@ -17,6 +13,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
 
 openweathermap:
   key: ${OPENWEATHERMAP_KEY}
